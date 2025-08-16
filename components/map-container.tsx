@@ -194,13 +194,62 @@ export function MapContainer({ userLocation, locationError }: MapContainerProps)
                   <h3 class="font-semibold text-sm">${building.name}</h3>
                 </div>
                 <p class="text-xs text-gray-600 mb-2">${building.description || category.name}</p>
-                <button class="w-full px-2 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700">Get Directions</button>
+                <button 
+                  class="w-full px-2 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 get-directions-btn" 
+                  data-building-id="${building.id}"
+                >
+                  Get Directions
+                </button>
               </div>
             `)
 
           buildingMarkersRef.current.push(marker)
+
           marker.on("click", () => {
             dispatch({ type: "SET_SELECTED_BUILDING", payload: building })
+          })
+
+          marker.on("popupopen", () => {
+            const popup = marker.getPopup()
+            const popupElement = popup.getElement()
+            if (popupElement) {
+              const directionBtn = popupElement.querySelector(".get-directions-btn") as HTMLButtonElement
+              if (directionBtn) {
+                directionBtn.onclick = (e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+
+                  // Calculate and display route from main gate to this building
+                  const mainGate = { lat: 12.995, lng: 80.225 }
+                  const destination = building.coordinates
+
+                  // Create a simple route (in real implementation, this would use proper routing)
+                  const routePath = [
+                    mainGate,
+                    { lat: (mainGate.lat + destination.lat) / 2, lng: (mainGate.lng + destination.lng) / 2 },
+                    destination,
+                  ]
+
+                  const route = {
+                    path: routePath,
+                    distance: Math.round(calculateDistance(mainGate, destination)),
+                    duration: Math.round((calculateDistance(mainGate, destination) / 80) * 60), // Rough walking time
+                    safetyScore: building.safetyScore || 85,
+                    type: "Safest Route",
+                    destination: building.name,
+                  }
+
+                  dispatch({ type: "SET_CURRENT_ROUTE", payload: route })
+
+                  toast.success(`Directions to ${building.name}`, {
+                    description: `${route.distance}m walk • ${route.duration} min • ${route.safetyScore}% safe`,
+                  })
+
+                  // Close the popup
+                  marker.closePopup()
+                }
+              }
+            }
           })
         })
 
@@ -406,4 +455,21 @@ export function MapContainer({ userLocation, locationError }: MapContainerProps)
       />
     </div>
   )
+}
+
+function calculateDistance(point1: { lat: number; lng: number }, point2: { lat: number; lng: number }): number {
+  const R = 6371 // Earth's radius in kilometers
+  const dLat = toRadians(point2.lat - point1.lat)
+  const dLng = toRadians(point2.lng - point1.lng)
+
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRadians(point1.lat)) * Math.cos(toRadians(point2.lat)) * Math.sin(dLng / 2) * Math.sin(dLng / 2)
+
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+  return R * c * 1000 // Convert to meters
+}
+
+function toRadians(degrees: number): number {
+  return degrees * (Math.PI / 180)
 }
