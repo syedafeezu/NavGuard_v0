@@ -62,7 +62,7 @@ type NavGuardAction =
   | { type: "SET_MAP_ZOOM"; payload: number }
 
 const initialState: NavGuardState = {
-  currentLocation: null,
+  currentLocation: { lat: 12.995, lng: 80.225 }, // Main Gate coordinates
   selectedBuilding: null,
   currentRoute: null,
   incidents: [],

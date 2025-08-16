@@ -9,19 +9,18 @@ import { LoadingScreen } from "@/components/loading-screen"
 import { RouteDisplay } from "@/components/route-display"
 import { EmergencyAlerts } from "@/components/emergency-alerts"
 import { NavigationSearch } from "@/components/navigation-search"
-import { useGeolocation } from "@/hooks/use-geolocation"
 import { NavGuardProvider } from "@/contexts/navguard-context"
 
 export default function HomePage() {
   const [isLoading, setIsLoading] = useState(true)
   const [sidePanelOpen, setSidePanelOpen] = useState(false)
-  const { location, error: locationError } = useGeolocation()
+
+  const mainGateLocation = { lat: 12.995, lng: 80.225 }
 
   useEffect(() => {
-    // Simulate app initialization
     const timer = setTimeout(() => {
       setIsLoading(false)
-    }, 2000)
+    }, 500)
 
     return () => clearTimeout(timer)
   }, [])
@@ -37,16 +36,20 @@ export default function HomePage() {
 
         <EmergencyAlerts />
 
-        <div className="flex-1 relative">
-          <MapContainer userLocation={location} locationError={locationError} />
-
-          <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-30 w-full max-w-md px-4">
+        <div className="flex-1 flex flex-col relative">
+          {/* Navigation Search - positioned above map on mobile, floating on desktop */}
+          <div className="block md:absolute md:top-4 md:left-4 md:z-30 md:w-96 p-4 md:p-0">
             <NavigationSearch />
+          </div>
+
+          {/* Map Container - full height with proper sizing */}
+          <div className="flex-1 w-full h-full min-h-[70vh] md:min-h-[80vh]">
+            <MapContainer userLocation={mainGateLocation} locationError={null} />
           </div>
 
           <SidePanel isOpen={sidePanelOpen} onClose={() => setSidePanelOpen(false)} />
 
-          <EmergencyButton userLocation={location} />
+          <EmergencyButton userLocation={mainGateLocation} />
 
           <RouteDisplay />
         </div>

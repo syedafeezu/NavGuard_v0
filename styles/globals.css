@@ -1,5 +1,5 @@
-@import 'tailwindcss';
-@import 'tw-animate-css';
+@import "tailwindcss";
+@import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -120,4 +120,52 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* Leaflet map container styles */
+.leaflet-container {
+  height: 100%;
+  width: 100%;
+  background: hsl(var(--muted));
+}
+
+/* Custom marker styles */
+.custom-marker {
+  background: transparent !important;
+  border: none !important;
+}
+
+.user-location-marker {
+  background: transparent !important;
+  border: none !important;
+}
+
+/* Leaflet popup customization for dark theme */
+.leaflet-popup-content-wrapper {
+  background: hsl(var(--card));
+  color: hsl(var(--card-foreground));
+  border-radius: 8px;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+}
+
+.leaflet-popup-tip {
+  background: hsl(var(--card));
+}
+
+/* Leaflet control customization */
+.leaflet-control-zoom a {
+  background: hsl(var(--card));
+  color: hsl(var(--foreground));
+  border: 1px solid hsl(var(--border));
+}
+
+.leaflet-control-zoom a:hover {
+  background: hsl(var(--accent));
+}
+
+/* Attribution styling */
+.leaflet-control-attribution {
+  background: hsl(var(--card) / 0.8);
+  color: hsl(var(--muted-foreground));
+  font-size: 10px;
 }
