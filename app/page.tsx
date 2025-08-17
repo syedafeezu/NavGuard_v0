@@ -31,25 +31,25 @@ export default function HomePage() {
 
   return (
     <NavGuardProvider>
-      <div className="h-screen flex flex-col bg-background overflow-hidden">
+      <div className="h-screen flex flex-col bg-background">
         <Header onMenuClick={() => setSidePanelOpen(true)} />
 
         <EmergencyAlerts />
 
-        <div className="flex-1 flex flex-col relative min-h-0">
-          <div className="w-full sm:absolute sm:top-4 sm:left-4 sm:z-30 sm:w-80 sm:max-w-[calc(100vw-2rem)] p-2 sm:p-0 bg-background sm:bg-transparent border-b sm:border-b-0 border-border sm:border-none">
+        <div className="flex-1 flex flex-col relative">
+          {/* Navigation Search - positioned above map on mobile, floating on desktop */}
+          <div className="block md:absolute md:top-4 md:left-4 md:z-30 md:w-96 p-4 md:p-0">
             <NavigationSearch />
           </div>
 
-          <div className="flex-1 w-full h-full min-h-[60vh] sm:min-h-[70vh] md:min-h-[80vh] relative">
+          {/* Map Container - full height with proper sizing */}
+          <div className="flex-1 w-full h-full min-h-[70vh] md:min-h-[80vh]">
             <MapContainer userLocation={mainGateLocation} locationError={null} />
           </div>
 
           <SidePanel isOpen={sidePanelOpen} onClose={() => setSidePanelOpen(false)} />
 
-          <div className="absolute bottom-4 right-4 sm:bottom-6 sm:right-6">
-            <EmergencyButton userLocation={mainGateLocation} />
-          </div>
+          <EmergencyButton userLocation={mainGateLocation} />
 
           <RouteDisplay />
         </div>
