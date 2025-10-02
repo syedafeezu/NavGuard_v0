@@ -10,7 +10,7 @@ interface SafetyHeatmapProps {
 
 export function SafetyHeatmap({ visible }: SafetyHeatmapProps) {
   const { state } = useNavGuard()
-  const heatmapLayerRef = useRef<any>(null)
+  const heatmapLayerRef = useRef<google.maps.Circle[]>([])
 
   useEffect(() => {
     if (!visible) {
@@ -19,85 +19,83 @@ export function SafetyHeatmap({ visible }: SafetyHeatmapProps) {
     }
 
     displayHeatmap()
+
+    return () => {
+      removeHeatmap()
+    }
   }, [visible, state.incidents])
 
-  const displayHeatmap = async () => {
+  const displayHeatmap = () => {
     try {
-      const L = await import("leaflet")
-      const map = (window as any).leafletMapRef
+      const map = (window as any).googleMapRef
 
       if (!map) return
 
-      // Remove existing heatmap
       removeHeatmap()
 
-      // Combine real incidents with sample data for demonstration
       const allIncidents = [...state.incidents, ...SAMPLE_INCIDENTS]
 
-      // Create safety zones based on incidents
       const safetyZones = generateSafetyZones(allIncidents)
 
       safetyZones.forEach((zone) => {
-        const circle = L.circle([zone.lat, zone.lng], {
+        const circle = new google.maps.Circle({
+          center: { lat: zone.lat, lng: zone.lng },
           radius: zone.radius,
           fillColor: zone.color,
-          color: zone.color,
-          weight: 1,
-          opacity: 0.6,
           fillOpacity: 0.3,
-        }).addTo(map)
+          strokeColor: zone.color,
+          strokeOpacity: 0.6,
+          strokeWeight: 1,
+          map: map,
+        })
 
-        circle.bindPopup(`
-          <div class="p-2">
-            <h4 class="font-semibold text-sm">${zone.level} Safety Zone</h4>
-            <p class="text-xs text-gray-600">${zone.incidents} incident(s) reported</p>
-            <p class="text-xs text-gray-600">Safety Score: ${zone.safetyScore}%</p>
-          </div>
-        `)
+        const infoWindow = new google.maps.InfoWindow({
+          content: `
+            <div style="padding: 8px;">
+              <h4 style="font-weight: 600; font-size: 14px; margin: 0 0 4px 0;">${zone.level} Safety Zone</h4>
+              <p style="font-size: 12px; color: #6b7280; margin: 2px 0;">${zone.incidents} incident(s) reported</p>
+              <p style="font-size: 12px; color: #6b7280; margin: 2px 0;">Safety Score: ${zone.safetyScore}%</p>
+            </div>
+          `,
+        })
 
-        if (!heatmapLayerRef.current) {
-          heatmapLayerRef.current = []
-        }
+        google.maps.event.addListener(circle, "click", (e: google.maps.MapMouseEvent) => {
+          infoWindow.setPosition(e.latLng)
+          infoWindow.open(map)
+        })
+
         heatmapLayerRef.current.push(circle)
       })
 
-      console.log("[v0] Safety heatmap displayed with", safetyZones.length, "zones")
+      console.log("Safety heatmap displayed with", safetyZones.length, "zones")
     } catch (error) {
-      console.error("[v0] Error displaying safety heatmap:", error)
+      console.error("Error displaying safety heatmap:", error)
     }
   }
 
   const removeHeatmap = () => {
-    if (heatmapLayerRef.current && (window as any).leafletMapRef) {
-      const map = (window as any).leafletMapRef
-      heatmapLayerRef.current.forEach((layer: any) => {
-        map.removeLayer(layer)
-      })
-      heatmapLayerRef.current = null
-    }
+    heatmapLayerRef.current.forEach(circle => circle.setMap(null))
+    heatmapLayerRef.current = []
   }
 
   const generateSafetyZones = (incidents: any[]) => {
     const zones: any[] = []
-    const gridSize = 0.002 // Approximately 200m grid
+    const gridSize = 0.002
 
-    // Create a grid of safety zones
     for (let lat = 12.985; lat <= 12.998; lat += gridSize) {
       for (let lng = 80.228; lng <= 80.245; lng += gridSize) {
         const nearbyIncidents = incidents.filter((incident) => {
           const distance = calculateDistance({ lat, lng }, incident.location)
-          return distance <= 300 // 300m radius
+          return distance <= 300
         })
 
-        let safetyScore = 95 // Base safety score
-        let color = "#10b981" // Green (safe)
+        let safetyScore = 95
+        let color = "#10b981"
         let level = "High"
 
         if (nearbyIncidents.length > 0) {
-          // Reduce safety score based on incidents
           safetyScore -= nearbyIncidents.length * 10
 
-          // Adjust for severity
           nearbyIncidents.forEach((incident) => {
             switch (incident.severity) {
               case "critical":
@@ -118,15 +116,14 @@ export function SafetyHeatmap({ visible }: SafetyHeatmapProps) {
           safetyScore = Math.max(30, safetyScore)
 
           if (safetyScore < 60) {
-            color = "#ef4444" // Red (unsafe)
+            color = "#ef4444"
             level = "Low"
           } else if (safetyScore < 80) {
-            color = "#f59e0b" // Orange (moderate)
+            color = "#f59e0b"
             level = "Medium"
           }
         }
 
-        // Only add zones with incidents or low safety scores
         if (nearbyIncidents.length > 0 || safetyScore < 90) {
           zones.push({
             lat,
@@ -145,7 +142,7 @@ export function SafetyHeatmap({ visible }: SafetyHeatmapProps) {
   }
 
   const calculateDistance = (point1: { lat: number; lng: number }, point2: { lat: number; lng: number }): number => {
-    const R = 6371000 // Earth's radius in meters
+    const R = 6371000
     const dLat = toRadians(point2.lat - point1.lat)
     const dLng = toRadians(point2.lng - point1.lng)
 
@@ -161,5 +158,5 @@ export function SafetyHeatmap({ visible }: SafetyHeatmapProps) {
     return degrees * (Math.PI / 180)
   }
 
-  return null // This component doesn't render anything visible
+  return null
 }

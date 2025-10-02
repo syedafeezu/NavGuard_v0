@@ -6,100 +6,103 @@ import { INCIDENT_TYPES, SEVERITY_CONFIG, SAMPLE_INCIDENTS } from "@/lib/inciden
 
 export function IncidentMarkers() {
   const { state } = useNavGuard()
-  const markersRef = useRef<any[]>([])
+  const markersRef = useRef<google.maps.Marker[]>([])
 
   useEffect(() => {
     displayIncidentMarkers()
+
+    return () => {
+      markersRef.current.forEach(marker => marker.setMap(null))
+      markersRef.current = []
+    }
   }, [state.incidents])
 
-  const displayIncidentMarkers = async () => {
+  const displayIncidentMarkers = () => {
     try {
-      const L = await import("leaflet")
-      const map = (window as any).leafletMapRef
+      const map = (window as any).googleMapRef
 
       if (!map) return
 
-      // Remove existing markers
-      markersRef.current.forEach((marker) => {
-        map.removeLayer(marker)
-      })
+      markersRef.current.forEach(marker => marker.setMap(null))
       markersRef.current = []
 
-      // Combine real incidents with sample data
       const allIncidents = [...state.incidents, ...SAMPLE_INCIDENTS]
 
       allIncidents.forEach((incident) => {
         const incidentConfig = INCIDENT_TYPES[incident.type]
         const severityConfig = SEVERITY_CONFIG[incident.severity]
 
-        const markerIcon = L.divIcon({
-          html: `
-            <div class="relative">
-              <div class="w-8 h-8 rounded-full border-2 border-white shadow-lg flex items-center justify-center text-sm" 
-                   style="background-color: ${severityConfig.color}">
-                ${incidentConfig.icon}
-              </div>
-              ${
-                incident.severity === "critical"
-                  ? '<div class="absolute -top-1 -right-1 w-3 h-3 bg-red-600 rounded-full animate-pulse"></div>'
-                  : ""
-              }
-            </div>
-          `,
-          className: "incident-marker",
-          iconSize: [32, 32],
-          iconAnchor: [16, 16],
+        const marker = new google.maps.Marker({
+          position: { lat: incident.location.lat, lng: incident.location.lng },
+          map: map,
+          icon: {
+            path: google.maps.SymbolPath.CIRCLE,
+            fillColor: severityConfig.color,
+            fillOpacity: 1,
+            strokeColor: "#ffffff",
+            strokeWeight: 2,
+            scale: 12,
+          },
+          label: {
+            text: incidentConfig.icon,
+            color: "#ffffff",
+            fontSize: "12px",
+          },
         })
 
-        const marker = L.marker([incident.location.lat, incident.location.lng], { icon: markerIcon })
-          .addTo(map)
-          .bindPopup(`
-            <div class="p-3 min-w-64">
-              <div class="flex items-center space-x-2 mb-2">
-                <span class="text-lg">${incidentConfig.icon}</span>
-                <h3 class="font-semibold text-sm">${incidentConfig.name}</h3>
-                <span class="px-2 py-1 text-xs rounded-full text-white" style="background-color: ${severityConfig.color}">
+        const infoWindow = new google.maps.InfoWindow({
+          content: `
+            <div style="padding: 12px; min-width: 250px;">
+              <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                <span style="font-size: 18px;">${incidentConfig.icon}</span>
+                <h3 style="font-weight: 600; font-size: 14px; margin: 0;">${incidentConfig.name}</h3>
+                <span style="padding: 4px 8px; font-size: 12px; border-radius: 9999px; color: white; background-color: ${severityConfig.color}">
                   ${severityConfig.name}
                 </span>
               </div>
-              
-              <p class="text-sm text-gray-700 mb-3">${incident.description}</p>
-              
-              <div class="space-y-1 text-xs text-gray-600">
-                <p><strong>Reported:</strong> ${incident.timestamp.toLocaleString()}</p>
-                <p><strong>Status:</strong> <span class="capitalize">${incident.status}</span></p>
+
+              <p style="font-size: 14px; color: #374151; margin-bottom: 12px;">${incident.description}</p>
+
+              <div style="font-size: 12px; color: #6b7280;">
+                <p style="margin: 4px 0;"><strong>Reported:</strong> ${incident.timestamp.toLocaleString()}</p>
+                <p style="margin: 4px 0;"><strong>Status:</strong> <span style="text-transform: capitalize;">${incident.status}</span></p>
                 ${
                   incident.reporterContact && !incident.anonymous
-                    ? `<p><strong>Contact:</strong> ${incident.reporterContact}</p>`
-                    : "<p><strong>Anonymous Report</strong></p>"
+                    ? `<p style="margin: 4px 0;"><strong>Contact:</strong> ${incident.reporterContact}</p>`
+                    : '<p style="margin: 4px 0;"><strong>Anonymous Report</strong></p>'
                 }
               </div>
-              
+
               ${
                 incident.photos && incident.photos.length > 0
-                  ? `<div class="mt-2">
-                  <p class="text-xs font-medium text-gray-600 mb-1">Photos (${incident.photos.length})</p>
-                  <div class="flex space-x-1">
+                  ? `<div style="margin-top: 8px;">
+                  <p style="font-size: 12px; font-weight: 500; color: #6b7280; margin-bottom: 4px;">Photos (${incident.photos.length})</p>
+                  <div style="display: flex; gap: 4px;">
                     ${incident.photos
                       .slice(0, 2)
-                      .map((photo) => `<img src="${photo}" class="w-12 h-12 object-cover rounded border" />`)
+                      .map((photo) => `<img src="${photo}" style="width: 48px; height: 48px; object-fit: cover; border-radius: 4px; border: 1px solid #e5e7eb;" />`)
                       .join("")}
-                    ${incident.photos.length > 2 ? `<div class="w-12 h-12 bg-gray-200 rounded border flex items-center justify-center text-xs">+${incident.photos.length - 2}</div>` : ""}
+                    ${incident.photos.length > 2 ? `<div style="width: 48px; height: 48px; background-color: #f3f4f6; border-radius: 4px; border: 1px solid #e5e7eb; display: flex; align-items: center; justify-content: center; font-size: 12px;">+${incident.photos.length - 2}</div>` : ""}
                   </div>
                 </div>`
                   : ""
               }
             </div>
-          `)
+          `,
+        })
+
+        marker.addListener("click", () => {
+          infoWindow.open(map, marker)
+        })
 
         markersRef.current.push(marker)
       })
 
-      console.log("[v0] Displayed", allIncidents.length, "incident markers")
+      console.log("Displayed", allIncidents.length, "incident markers")
     } catch (error) {
-      console.error("[v0] Error displaying incident markers:", error)
+      console.error("Error displaying incident markers:", error)
     }
   }
 
-  return null // This component doesn't render anything visible
+  return null
 }
